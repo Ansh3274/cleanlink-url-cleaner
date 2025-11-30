@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CleanLink – Remove Tracking from URLs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="description"
+    content="A tiny tool to remove tracking parameters (utm, fbclid, gclid, etc.) from URLs and get a clean, shareable link."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --bg: #050816;
+      --card-bg: rgba(10, 12, 24, 0.96);
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.15);
+      --accent-strong: rgba(129, 140, 248, 0.25);
+      --text: #f9fafb;
+      --text-soft: #9ca3af;
+      --danger: #f97373;
+      --radius-lg: 20px;
+      --radius-xl: 26px;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.35);
+      --border-subtle: rgba(148, 163, 184, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top, #1f2937 0, #020617 45%, #000 100%);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 720px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(3, 7, 18, 0.98));
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Glow accents */
+    .app-shell::before,
+    .app-shell::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(40px);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .app-shell::before {
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle at center, rgba(94, 234, 212, 0.45), transparent 70%);
+      top: -80px;
+      right: -40px;
+    }
+
+    .app-shell::after {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle at center, rgba(129, 140, 248, 0.45), transparent 70%);
+      bottom: -120px;
+      left: -40px;
+    }
+
+    .app-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #a5b4fc, #4f46e5);
+      box-shadow: 0 10px 25px rgba(79, 70, 229, 0.8);
+      margin-bottom: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: inherit;
+      border: 1px solid rgba(249, 250, 251, 0.6);
+      opacity: 0.65;
+    }
+
+    .logo span {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .title-highlight {
+      background: linear-gradient(to right, #a5b4fc, #22d3ee);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.88rem;
+      color: var(--text-soft);
+      max-width: 440px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: var(--text-soft);
+      backdrop-filter: blur(12px);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.7));
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+    }
+
+    .main-card {
+      margin-top: 10px;
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.9));
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-soft);
+    }
+
+    .small-hint {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+      opacity: 0.9;
+    }
+
+    .field {
+      margin-top: 4px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    textarea,
+    .output {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      padding: 12px 13px;
+      font-size: 0.9rem;
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text);
+      resize: vertical;
+      min-height: 56px;
+      max-height: 160px;
+      outline: none;
+      transition: border 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    textarea:focus,
+    .output:focus-within {
+      border-color: rgba(129, 140, 248, 0.9);
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.8);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    textarea::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: radial-gradient(circle at 20% 0%, #a5b4fc 0, #4f46e5 45%, #22d3ee 100%);
+      color: #0b1020;
+      box-shadow: 0 14px 25px rgba(15, 23, 42, 0.85);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .btn span.btn-gloss {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), transparent 40%, transparent 100%);
+      mix-blend-mode: screen;
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    .btn-label {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-icon {
+      font-size: 1rem;
+    }
+
+    .section-divider {
+      height: 1px;
+      border-radius: 999px;
+      background: linear-gradient(to right, transparent, rgba(148, 163, 184, 0.6), transparent);
+      opacity: 0.7;
+    }
+
+    .output-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .output {
+      position: relative;
+      padding-right: 80px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      word-break: break-all;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.14), rgba(15, 23, 42, 0.94));
+    }
+
+    .output-text {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      outline: none;
+    }
+
+    .pill-compare {
+      font-size: 0.7rem;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #f97316;
+    }
+
+    .copy-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.65);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95));
+      padding: 7px 11px;
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      background: radial-gradient(circle at top, rgba(31, 41, 55, 0.98), rgba(15, 23, 42, 0.96));
+      color: #e5e7eb;
+    }
+
+    .copy-btn-icon {
+      font-size: 0.9rem;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+      color: var(--text-soft);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-message {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 18px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+    }
+
+    .status-dot.idle {
+      background: rgba(148, 163, 184, 0.7);
+    }
+
+    .status-dot.ok {
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+    }
+
+    .status-dot.error {
+      background: #f97373;
+      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.18);
+    }
+
+    .status-message span {
+      opacity: 0.9;
+    }
+
+    .meta-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.72rem;
+      color: var(--text-soft);
+    }
+
+    .tag {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .stat-chip {
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(22, 163, 74, 0.14);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #bbf7d0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .stat-chip-badge {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 14px;
+      }
+      .app-shell {
+        padding: 16px;
+        border-radius: 18px;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .main-card {
+        padding: 14px;
+      }
+      textarea {
+        min-height: 72px;
+      }
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .output-row {
+        flex-direction: column;
+      }
+      .copy-btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .output {
+        padding-right: 13px;
+      }
+      .status-bar {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-inner">
+      <header class="header">
+        <div class="title-wrap">
+          <div class="logo" aria-hidden="true">
+            <span>CL</span>
+          </div>
+          <div class="title">
+            CleanLink
+            <span class="title-highlight">URL Cleaner</span>
+          </div>
+          <p class="subtitle">
+            Paste any messy link packed with tracking (<code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, etc.)
+            and get a clean, privacy-friendly URL in one click.
+          </p>
+        </div>
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Single-purpose, zero clutter</span>
+        </div>
+      </header>
+
+      <main class="main-card" role="main">
+        <div class="label-row">
+          <span>Original URL</span>
+          <span class="small-hint">Tip: Paste and press <kbd>Enter</kbd></span>
+        </div>
+
+        <div class="field">
+          <div class="input-row">
+            <textarea
+              id="inputUrl"
+              placeholder="https://example.com?utm_source=newsletter&utm_medium=email&fbclid=..."
+              spellcheck="false"
+            ></textarea>
+            <button id="cleanBtn" class="btn" type="button">
+              <span class="btn-gloss"></span>
+              <span class="btn-label">
+                <span class="btn-icon">✨</span>
+                <span>Clean URL</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="label-row">
+          <span>Clean URL</span>
+          <span class="pill-compare">
+            <span class="pill-dot"></span>
+            Tracking params stripped, link preserved
+          </span>
+        </div>
+
+        <div class="field">
+          <div class="output-row">
+            <div class="output" id="outputContainer">
+              <input
+                id="outputUrl"
+                class="output-text"
+                readonly
+                placeholder="Your cleaned link will appear here…"
+              />
+            </div>
+            <button id="copyBtn" class="copy-btn" type="button">
+              <span class="copy-btn-icon">📋</span>
+              <span id="copyLabel">Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <footer class="status-bar">
+          <div class="status-message">
+            <span id="statusDot" class="status-dot idle"></span>
+            <span id="statusText">Idle – waiting for a URL.</span>
+          </div>
+          <div class="meta-info">
+            <span class="tag">No data stored</span>
+            <span class="stat-chip">
+              <span class="stat-chip-badge"></span>
+              <span id="removedCount">0 params cleaned</span>
+            </span>
+          </div>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const inputEl = document.getElementById("inputUrl");
+      const outputEl = document.getElementById("outputUrl");
+      const cleanBtn = document.getElementById("cleanBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const copyLabel = document.getElementById("copyLabel");
+      const statusText = document.getElementById("statusText");
+      const statusDot = document.getElementById("statusDot");
+      const removedCountEl = document.getElementById("removedCount");
+      const outputContainer = document.getElementById("outputContainer");
+
+      const explicitBlacklist = new Set([
+        "fbclid",
+        "gclid",
+        "dclid",
+        "msclkid",
+        "mc_cid",
+        "mc_eid",
+        "vero_conv",
+        "vero_id",
+        "igshid",
+        "mkevt",
+        "mkcid",
+        "affid",
+        "ref",
+        "ref_src",
+        "ref_url",
+      ]);
+
+      function setStatus(message, type) {
+        statusText.textContent = message;
+        statusDot.classList.remove("idle", "ok", "error");
+        statusDot.classList.add(type || "idle");
+      }
+
+      function cleanUrl(rawInput) {
+        let removedCount = 0;
+        let normalized = rawInput.trim();
+
+        if (!normalized) {
+          throw new Error("Please paste a URL to clean.");
+        }
+
+        if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(normalized)) {
+          normalized = "https://" + normalized;
+        }
+
+        let url;
+        try {
+          url = new URL(normalized);
+        } catch (e) {
+          throw new Error("That doesn’t look like a valid URL.");
+        }
+
+        const params = url.searchParams;
+
+        // Trackers starting with utm_
+        const toDelete = [];
+        params.forEach((value, key) => {
+          if (key.toLowerCase().startsWith("utm_") || explicitBlacklist.has(key.toLowerCase())) {
+            toDelete.push(key);
+          }
+        });
+
+        toDelete.forEach((key) => {
+          const before = params.getAll(key).length;
+          params.delete(key);
+          removedCount += before;
+        });
+
+        const search = params.toString();
+        const cleaned =
+          url.origin +
+          url.pathname.replace(/\/+$/, (match) => (match === "/" ? "/" : "")) +
+          (search ? "?" + search : "") +
+          (url.hash || "");
+
+        return { cleaned, removedCount };
+      }
+
+      function handleClean() {
+        const raw = inputEl.value;
+        try {
+          const { cleaned, removedCount } = cleanUrl(raw);
+          outputEl.value = cleaned;
+          outputContainer.classList.add("has-output");
+
+          removedCountEl.textContent =
+            removedCount === 0
+              ? "No tracking params found 🎉"
+              : removedCount === 1
+              ? "1 tracking param cleaned"
+              : removedCount + " tracking params cleaned";
+
+          if (removedCount > 0) {
+            setStatus("Cleaned your link – tracking removed.", "ok");
+          } else {
+            setStatus("Your link was already clean.", "ok");
+          }
+        } catch (err) {
+          outputEl.value = "";
+          removedCountEl.textContent = "0 params cleaned";
+          setStatus(err.message || "Something went wrong.", "error");
+        }
+      }
+
+      function handleCopy() {
+        const value = outputEl.value.trim();
+        if (!value) {
+          setStatus("There’s nothing to copy yet.", "error");
+          return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(value)
+            .then(() => {
+              copyLabel.textContent = "Copied!";
+              setStatus("Clean URL copied to clipboard.", "ok");
+              setTimeout(() => {
+                copyLabel.textContent = "Copy";
+              }, 1200);
+            })
+            .catch(() => {
+              fallbackCopy(value);
+            });
+        } else {
+          fallbackCopy(value);
+        }
+      }
+
+      function fallbackCopy(text) {
+        try {
+          outputEl.select();
+          document.execCommand("copy");
+          copyLabel.textContent = "Copied!";
+          setStatus("Clean URL copied to clipboard.", "ok");
+          setTimeout(() => {
+            copyLabel.textContent = "Copy";
+          }, 1200);
+        } catch (e) {
+          setStatus("Couldn’t copy automatically – please copy manually.", "error");
+        }
+      }
+
+      cleanBtn.addEventListener("click", handleClean);
+      copyBtn.addEventListener("click", handleCopy);
+
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          handleClean();
+        }
+      });
+
+      inputEl.addEventListener("input", () => {
+        setStatus("Ready – hit Clean when you’re done.", "idle");
+      });
+    })();
+  </script>
+</body>
+</html>
